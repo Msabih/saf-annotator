@@ -1,4 +1,4 @@
-// Bootstraps sticky notes without modifying you// Bootstraps sticky notes + provider init, no edits to your existing scripts.
+// Bootstraps sticky notes + provider init, no edits to your existing scripts.
 (async () => {
   const [{ NotesController, defaultToPageCoords }, storage] = await Promise.all([
     import(chrome.runtime.getURL('src/notes/notesController.js')),
@@ -23,9 +23,12 @@
       .map(c => c.closest('div')).filter(Boolean);
     return canvases;
   }
+
   function getPageIndex(el) {
     const attr = el.getAttribute('data-page-number') ?? el.getAttribute('data-page-index');
-    if (attr != null) return parseInt(attr, 10) - (el.hasAttribute('data-page-number') ? 1 : 0);
+    if (attr != null) {
+      return parseInt(attr, 10) - (el.hasAttribute('data-page-number') ? 1 : 0);
+    }
     return getPageContainers().indexOf(el);
   }
 
@@ -40,4 +43,4 @@
   window.SR_NOTES = ctrl;
   window.SR_NOTES_USE_SYNC = async (on) => (await storage.__dev_setSync(!!on));
 })();
-r existing content script.
+

@@ -1,109 +1,44 @@
-import { VirtualPager } from '../pager/virtualPages.js';
-import { ExcalidrawIframeHost } from './host-iframe.js';
-import { deleteScene } from './sceneStore.js';
+// Mounts virtual pages + Excalidraw iframe (MV3-safe)
+(async () => {
+  const { VirtualPager } = await import(chrome.runtime.getURL('src/pager/virtualPages.js'));
+  const { ExcalidrawIframeHost } = await import(chrome.runtime.getURL('src/excaliboard/host-iframe.js'));
+  const { deleteScene } = await import(chrome.runtime.getURL('src/excaliboard/sceneStore.js'));
 
-(function () {
-  const state = { pager: null, boards: new Map() }; // uuid -> host
-
-  function getPageContainers() {
-    const candidates = [
-      '.sr-page',
-      '.scholar-reader-page',
-      '.pdfViewer .page',
-      'div[data-page-number]',
-      '.page', '.pdf-page'
-    ];
-    for (const sel of candidates) {
-      const nodes = Array.from(document.querySelectorAll(sel));
-      if (nodes.length) return nodes;
-    }
-    const canvases = Array.from(document.querySelectorAll('canvas')).map(c => c.parentElement).filter(Boolean);
-    return canvases;
+  const state = { pager:null, boards:new Map() };
+  function getPageContainers(){
+    const sels=['.sr-page','.scholar-reader-page','.pdfViewer .page','div[data-page-number]','.page','.pdf-page'];
+    for(const s of sels){const a=[...document.querySelectorAll(s)]; if(a.length) return a;}
+    return [...document.querySelectorAll('canvas')].map(c=>c.parentElement).filter(Boolean);
   }
+  function getPager(){ return state.pager||(state.pager=new VirtualPager({ getPageContainers })); }
 
-  function getPager() {
-    if (!state.pager) state.pager = new VirtualPager({ getPageContainers });
-    return state.pager;
-  }
-
-  function injectUi() {
-    const btnBar = document.createElement('div');
-    btnBar.className = 'sr-virtual-controls';
-    btnBar.innerHTML = `
-      <button data-act="add">+ Blank page</button>
-      <button data-act="del">Delete blank page</button>
-    `;
-    document.documentElement.appendChild(btnBar);
-
-    btnBar.addEventListener('click', (e) => {
-      const act = e.target?.dataset?.act;
-      const pager = getPager();
-      const pages = getPageContainers();
-      if (!pages.length) return;
-
-      if (act === 'add') {
-        const mid = window.scrollY + innerHeight / 2;
-        let bestIdx = 0, bestDist = Infinity;
-        pages.forEach((el, i) => {
-          const r = el.getBoundingClientRect();
-          const top = r.top + window.scrollY, bottom = r.bottom + window.scrollY;
-          const center = (top + bottom) / 2;
-          const d = Math.abs(center - mid);
-          if (d < bestDist) { bestDist = d; bestIdx = i; }
-        });
-        const { uuid, el } = pager.insertVirtualAfter(bestIdx);
-        mountHost(el, uuid);
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  function injectUi(){
+    const link=document.createElement('link'); link.rel='stylesheet'; link.href=chrome.runtime.getURL('styles/virtual-pages.css');
+    document.documentElement.appendChild(link);
+    const bar=document.createElement('div'); bar.className='sr-virtual-controls';
+    bar.innerHTML=`<button data-act="add">+ Blank page</button><button data-act="del">Delete blank page</button>`;
+    document.documentElement.appendChild(bar);
+    bar.addEventListener('click',(e)=>{
+      const act=e.target?.dataset?.act; const pager=getPager(); const pages=getPageContainers(); if(!pages.length) return;
+      if(act==='add'){
+        const mid=scrollY+innerHeight/2; let best=0,bd=1e12;
+        pages.forEach((el,i)=>{const r=el.getBoundingClientRect(); const c=(r.top+r.bottom)/2+scrollY; const d=Math.abs(c-mid); if(d<bd){bd=d;best=i;}});
+        const { uuid, el } = pager.insertVirtualAfter(best);
+        mountHost(el, uuid); el.scrollIntoView({behavior:'smooth',block:'center'});
       }
-
-      if (act === 'del') {
-        const allV = Array.from(document.querySelectorAll('[data-sr-virtual-page]'));
-        if (!allV.length) return;
-        const mid = window.scrollY + innerHeight / 2;
-        let bestEl = allV[0], bestDist = Infinity;
-        for (const el of allV) {
-          const r = el.getBoundingClientRect();
-          const center = (r.top + r.bottom) / 2 + window.scrollY;
-          const d = Math.abs(center - mid);
-          if (d < bestDist) { bestDist = d; bestEl = el; }
-        }
-        const uuid = bestEl.getAttribute('data-sr-virtual-page');
-        unmountHost(uuid);
-        deleteScene(uuid);
-        pager.removeVirtual(uuid);
+      if(act==='del'){
+        const all=[...document.querySelectorAll('[data-sr-virtual-page]')]; if(!all.length) return;
+        const mid=scrollY+innerHeight/2; let bestEl=all[0],bd=1e12;
+        for(const el of all){const r=el.getBoundingClientRect(); const c=(r.top+r.bottom)/2+scrollY; const d=Math.abs(c-mid); if(d<bd){bd=d;bestEl=el;}}
+        const uuid=bestEl.getAttribute('data-sr-virtual-page'); unmountHost(uuid); deleteScene(uuid); pager.removeVirtual(uuid);
       }
     });
   }
 
-  function mountHost(container, uuid) {
-    container.classList.add('sr-virtual-page');
-    const host = new ExcalidrawIframeHost(container, uuid);
-    state.boards.set(uuid, host);
-  }
+  function mountHost(container, uuid){ container.classList.add('sr-virtual-page'); const host=new ExcalidrawIframeHost(container, uuid); state.boards.set(uuid, host); }
+  function unmountHost(uuid){ state.boards.get(uuid)?.destroy?.(); document.querySelector(`[data-sr-virtual-page="${uuid}"]`)?.remove(); state.boards.delete(uuid); }
 
-  function unmountHost(uuid) {
-    const host = state.boards.get(uuid);
-    host?.destroy?.();
-    const el = document.querySelector(`[data-sr-virtual-page="${uuid}"]`);
-    el?.remove();
-    state.boards.delete(uuid);
-  }
-
-  function boot() {
-    // CSS
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = chrome.runtime.getURL('styles/virtual-pages.css');
-    document.documentElement.appendChild(link);
-
-    injectUi();
-    getPager();
-    for (const el of document.querySelectorAll('[data-sr-virtual-page]')) {
-      const uuid = el.getAttribute('data-sr-virtual-page');
-      mountHost(el, uuid);
-    }
-  }
-
-  boot();
+  injectUi(); getPager();
+  for(const el of document.querySelectorAll('[data-sr-virtual-page]')) mountHost(el, el.getAttribute('data-sr-virtual-page'));
 })();
-ne, saveScene } from './sceneStore.js';
+
