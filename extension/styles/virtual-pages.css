@@ -1,0 +1,59 @@
+/* Controls */
+.sr-virtual-controls {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 2147483645;
+}
+.sr-virtual-controls button {
+  padding: 6px 10px;
+  font: 12px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  border: 1px solid rgba(0,0,0,.2);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0,0,0,.08);
+}
+.sr-virtual-controls button:hover { background: #f7f7f7; }
+
+/* Virtual page look */
+.sr-virtual-page {
+  position: relative;
+  margin: 12px auto;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,.15);
+  border-radius: 4px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.12);
+  min-height: 600px; /* will grow with container */
+  max-width: min(100%, 900px); /* approximate PDF page width; adapts */
+}
+
+/* Lite board */
+.sr-ex-lite-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(255,255,255,.9);
+  border-bottom: 1px solid rgba(0,0,0,.08);
+  display: flex;
+  gap: 8px;
+  padding: 6px 8px;
+  align-items: center;
+}
+.sr-ex-lite-toolbar button {
+  padding: 4px 8px;
+  border: 1px solid rgba(0,0,0,.2);
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+.sr-ex-lite-tip { font-size: 12px; opacity: .7; margin-left: 8px; }
+
+.sr-ex-lite-canvas {
+  display: block;
+  width: 100%;
+  height: 900px; /* default board height, resizes with container */
+}
+

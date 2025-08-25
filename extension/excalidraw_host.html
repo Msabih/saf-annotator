@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Excalidraw Host</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'self';" />
+    <style>
+      html, body { height: 100%; margin: 0; background: #fafafa; }
+      #app { height: 100%; }
+      .missing { padding: 16px; font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+      .missing strong { color: #b00020; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <!-- Your local, prebundled Excalidraw+React bundle should define window.__ExHost.mount(appEl, onSceneChange) -->
+    <script src="vendor/excalidraw.bundle.js"></script>
+
+    <script type="module">
+      const ORIGIN = location.origin; // chrome-extension://<id>
+
+      const appEl = document.getElementById('app');
+
+      // Fallback UI if bundle is missing
+      const hasBundle = !!(window.__ExHost && typeof window.__ExHost.mount === 'function');
+      if (!hasBundle) {
+        appEl.innerHTML = `
+          <div class="missing">
+            <p><strong>Excalidraw bundle not found.</strong></p>
+            <p>Add <code>vendor/excalidraw.bundle.js</code> to the extension (see instructions), or continue using the Lite board in the page.</p>
+          </div>`;
+      }
+
+      // Keep current pageUuid & last scene
+      let pageUuid = null;
+
+      // Mount app if available
+      let api = null;
+      if (hasBundle) {
+        api = window.__ExHost.mount(appEl, (scene) => {
+          // Notify parent on every change (debounced in bundle)
+          parent.postMessage({ __sr: true, type: 'scene:changed', pageUuid, scene }, ORIGIN);
+          // Inform parent of content height (for iframe sizing)
+          const rect = appEl.getBoundingClientRect();
+          parent.postMessage({ __sr: true, type: 'height', pageUuid, height: rect.height }, ORIGIN);
+        });
+      }
+
+      // Listen to parent
+      window.addEventListener('message', (ev) => {
+        const msg = ev.data;
+        if (!msg || msg.__sr !== true) return;
+        if (msg.type === 'init') {
+          pageUuid = msg.pageUuid;
+          if (api && msg.scene) api.loadScene(msg.scene);
+          // send height early
+          const rect = appEl.getBoundingClientRect();
+          parent.postMessage({ __sr: true, type: 'height', pageUuid, height: rect.height }, ORIGIN);
+        } else if (msg.type === 'set-elements') {
+          api?.setElements?.(msg.elements);
+        } else if (msg.type === 'focus') {
+          api?.focus?.();
+        }
+      }, { passive: true });
+    </script>
+  </body>
+</html>
+

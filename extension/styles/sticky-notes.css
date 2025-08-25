@@ -1,0 +1,43 @@
+.sr-note {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid rgba(0,0,0,.15);
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.12);
+  padding-top: 32px; /* header space */
+  overflow: hidden;
+  z-index: 5; /* above highlights/drawings */
+}
+
+.sr-note__header {
+  position: absolute; left: 0; top: 0; right: 0; height: 32px;
+  display: flex; align-items: center; gap: 8px;
+  padding: 0 8px;
+  background: rgba(255,255,255,.6);
+  backdrop-filter: blur(2px);
+  border-bottom: 1px dashed rgba(0,0,0,.1);
+  cursor: default;
+  user-select: none;
+}
+
+.sr-note__drag-handle { cursor: grab; opacity: .6; }
+.sr-note__status { font-size: 12px; opacity: .7; }
+.sr-note__resolve, .sr-note__delete {
+  margin-left: auto;
+  background: transparent; border: none; font-size: 12px; cursor: pointer;
+}
+.sr-note__delete { margin-left: 4px; }
+
+.sr-note__body {
+  width: 100%; height: 100%;
+  border: none; outline: none; resize: none;
+  background: transparent;
+  padding: 8px;
+  font: 13px/1.4 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+.sr-note__resizer {
+  position: absolute;
+  width: 14px; height: 14px;
+  right: 2px; bottom:
+
